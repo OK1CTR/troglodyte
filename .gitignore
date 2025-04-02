@@ -1,0 +1,6 @@
+__pycache__
+.idea
+data
+*.pdf
+*.PDF
+*.csv
