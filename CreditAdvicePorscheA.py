@@ -20,7 +20,7 @@ import sys
 
 # Configuration ------------------------------------------------------------------------------------------------------
 # Default *.pdf input file name for test purposes only
-default_pdf_name = 'data/Lieferant 60411 - Beleg 5125143267  FI 6619663053.PDF'
+default_pdf_name = 'data/Porsche/Lieferant 60411 - Beleg 5125143267  FI 6619663053.PDF'
 # --------------------------------------------------------------------------------------------------------------------
 
 if __name__ == '__main__':

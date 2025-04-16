@@ -20,11 +20,11 @@ import pymupdf
 import re
 import sys
 from os import listdir
-from os.path import isfile, join
+from os.path import isfile, join, dirname
 from pymupdf4llm.helpers.get_text_lines import get_text_lines
 
 # Configuration ------------------------------------------------------------------------------------------------------
-# Item sparator in output files
+# Item separator in output files
 sep = ';'
 # --------------------------------------------------------------------------------------------------------------------
 
@@ -33,8 +33,10 @@ class Extractor:
         self.pdf = None
         self.csv = None
         self.page = None
-        self.text = None
+        self.lines = None
         self.page_number = None
+        self.common_output = None
+        self.path = None
 
     @classmethod
     def find_files(cls, def_file_name):
@@ -60,7 +62,7 @@ class Extractor:
     @classmethod
     def num(cls, in_str):
         """
-        In the input is a number, convert it form US format to CZ format
+        If the input is a number, convert it form US format to CZ format
         :param in_str: Input string containing number in US format
         :return: Output string containing number in CZ format
         """
@@ -71,23 +73,48 @@ class Extractor:
         else:
             return in_str
 
-    def open(self, file_name):
+    @classmethod
+    def no_dot(cls, in_str):
+        """
+        If the input string is not a date, removes dots form it
+        :param in_str: Input string containing number
+        :return: Output string containing number
+        """
+        if in_str.count('.') != 2:
+            out_str = in_str.replace('.', '')
+            return out_str
+        else:
+            return in_str
+
+    def open(self, file_name, make_csv=True):
         """
         Load the selected input *.pdf file into the extractor and open the output *.csv file
         :param file_name:
+        :param make_csv: If true, also a *.csv file of the same name will be created (default True)
         :return: True if successful
         """
-        f_name_parts = file_name.split( '.')
-        if len(f_name_parts) != 2:
-            print(f'Wrong file name \'{file_name}\'!')
-            return False
-        f_name = f_name_parts[0] + '.csv'
+        # load the *.pdf file
         try:
             self.pdf = pymupdf.open(file_name)
-            self.csv = open(f_name, 'w')
         except FileNotFoundError:
             print(f'File {file_name} not found!')
             return False
+
+        # create the corresponding *.csv file
+        if make_csv:
+            file_name_parts = file_name.split( '.')
+            if len(file_name_parts) != 2:
+                print(f'Wrong file name \'{file_name}\'!')
+                return False
+            csv_file_name = file_name_parts[0] + '.csv'
+            try:
+                self.csv = open(csv_file_name, 'w')
+            except FileNotFoundError:
+                print(f'Cannot create {csv_file_name} file!')
+                return False
+
+        # save project path
+        self.path = dirname(file_name)
         return True
 
     def close(self):
@@ -95,9 +122,9 @@ class Extractor:
         Close the destination output *.csv file
         :return: True
         """
-        assert self.csv is not None
         assert self.pdf is not None
-        self.csv.close()
+        if self.csv is not None:
+            self.csv.close()
         self.pdf.close()
         return True
 
@@ -113,7 +140,7 @@ class Extractor:
             print(f'Cannot find page {page_number}')
             return False
         self.page = self.pdf[page_number]
-        self.text = get_text_lines(self.page)
+        self.lines = get_text_lines(self.page).split('\n')
         self.page_number = page_number
         return True
 
@@ -125,13 +152,12 @@ class Extractor:
         :return: True if ket found
         """
         assert self.csv is not None
-        assert self.text is not None
+        assert self.lines is not None
 
-        lines = self.text.split('\n')
         key_find = key + ':'
         ret = False
 
-        for line in lines:
+        for line in self.lines:
             if line.find(key_find) != -1:
                 line_parts = line.split(':')
                 value = line_parts[1]
@@ -152,13 +178,12 @@ class Extractor:
         :return: True if key found
         """
         assert self.csv is not None
-        assert self.text is not None
+        assert self.lines is not None
 
-        lines = self.text.split('\n')
         line_num = 0
         ret = False
 
-        for line in lines:
+        for line in self.lines:
             if line.find(key) != -1:
                 ret = True
                 break
@@ -167,7 +192,7 @@ class Extractor:
         if not ret:
             return False
 
-        line = lines[line_num + 1]
+        line = self.lines[line_num + 1]
         line = line[pos:]
         self.csv.write(key + sep + line.strip() + '\n')
         return ret
@@ -180,14 +205,13 @@ class Extractor:
         :return: True if header found
         """
         assert self.csv is not None
-        assert self.text is not None
+        assert self.lines is not None
 
-        lines = self.text.split('\n')
         export = False
         counter = num
         output = ''
 
-        for line in lines:
+        for line in self.lines:
 
             # find the header
             if line.find(header) != -1:
@@ -241,4 +265,79 @@ class Extractor:
         """
         assert self.csv is not None
         self.csv.write(text + '\n')
+        return True
+
+    def grep(self, phrase):
+        """
+        Return line index containing given phrase on page
+        :param phrase: Phrase to search
+        :return: Line index
+        """
+        count = 0
+        for line in self.lines:
+            if line.find(phrase) != -1:
+                return count
+            count += 1
+        return None
+
+    def common_output_open(self, file_name):
+        """
+        Open common output *.csv file
+        :param file_name: Output file name
+        :return: True if successful
+        """
+        try:
+            self.common_output = open(file_name, 'w')
+        except FileNotFoundError:
+            print(f'Cannot create {file_name} file!')
+            return False
+        return True
+
+    def common_output_write(self, data):
+        """
+        Write row into the common output file
+        :param data: Input data list
+        :return: True if successful
+        """
+        if len(data) > 0:
+            self.common_output.write(f'{data[0]}')
+        for item in data[1:]:
+            self.common_output.write(f'{sep}{item}')
+        self.common_output.write('\n')
+
+    def common_output_close(self):
+        """
+        Close common output file
+        :return: True
+        """
+        assert self.common_output is not None
+        self.common_output.close()
+        return True
+
+    def drop_page(self, page_number=None):
+        """
+        Save selected page to a text file for manual analysis
+        :param page_number: Number of page to drop or None for currently open page
+        :return:
+        """
+        # obtain the text
+        if page_number is None:
+            lines = self.lines
+            page_number = self.page_number
+        else:
+            page_number = page_number - 1
+            if page_number not in self.pdf:
+                print(f'Cannot find page {page_number}')
+                return False
+            lines = get_text_lines(self.pdf[page_number]).split('\n')
+
+        # make file name
+        file_name = f'{self.path}/page_{(page_number + 1):03d}.txt'
+        try:
+            with open(file_name, 'w') as fw:
+                for line in lines:
+                    fw.write('%s\n' % line)
+        except FileNotFoundError:
+            print(f'Cannot create {file_name} file!')
+            return False
         return True
