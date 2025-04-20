@@ -28,6 +28,28 @@ default_pdf_name = 'data/bmw/SND_GFB_A1_15054410_101550881_de96a04a-4790-4b71-a3
 #default_pdf_name = 'data/bmw/SND_GFB_A1_15054410_101370251_e1579c4c-8da4-4845-b9db-198358268929_VZOR.pdf'
 # --------------------------------------------------------------------------------------------------------------------
 
+def correct_correction(item_in):
+    """
+    Invert sign of the price difference and the total amount due to direction of the price change
+    :param item_in: List of items of the price difference table row
+    :return: Corrected price difference table row
+    """
+    try:
+        old_price = float(item_in[1].replace(',', '.'))
+        new_price = float(item_in[2].replace(',', '.'))
+        diff = float(item_in[3].replace(',', '.'))
+        total = float(item_in[4].replace(',', '.'))
+    except [ValueError, IndexError]:
+        print('Invalid data in price difference table!')
+        sys.exit(0)
+    if old_price > new_price:
+        diff *= -1
+        total *= -1
+    s_diff = f'{diff:.02f}'.replace('.', ',')
+    s_total = f'{total:.02f}'.replace('.', ',')
+    return [item_in[0], item_in[1], item_in[2], s_diff, s_total]
+
+
 if __name__ == '__main__':
     ext = Extractor()
     file_list = ext.find_files(default_pdf_name)
@@ -39,6 +61,12 @@ if __name__ == '__main__':
         ext.open_page(1)
         row = []
         #ext.drop_page()
+
+        # document number
+        ln = ext.grep('Document number') + 2
+        items = ext.lines[ln].split('\t')
+        row += [items[0]]
+        # print(items[-1])
 
         # date
         ln = ext.grep('Buchhaltung')
@@ -52,12 +80,12 @@ if __name__ == '__main__':
         row += [items[-1]]
         # print(items[-1])
 
-        # table
+        # correction table
         ln = ext.grep('Service date') + 2
         items = ext.lines[ln].split('\t')
         items = [ext.no_dot(x) for x in items]
-        row += items[1:6]
-        # print(items[1:6])
+        row += correct_correction(items[1:6])
+        #print(items[1:6])
         ln += 2
         items = ext.lines[ln].split('\t')
         row += [items[0]]
