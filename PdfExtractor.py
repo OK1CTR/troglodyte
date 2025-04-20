@@ -332,7 +332,7 @@ class Extractor:
             lines = get_text_lines(self.pdf[page_number]).split('\n')
 
         # make file name
-        file_name = f'{self.path}/page_{(page_number + 1):03d}.txt'
+        file_name = f'data/page_{(page_number + 1):03d}.txt'
         try:
             with open(file_name, 'w') as fw:
                 for line in lines:

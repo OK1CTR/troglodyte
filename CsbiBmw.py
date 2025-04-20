@@ -20,7 +20,7 @@ import sys
 
 # Configuration ------------------------------------------------------------------------------------------------------
 # Common output file name with path
-output_file = 'data/bmw/output.csv'
+output_file = 'data/output.csv'
 
 # Default *.pdf input file name for test purposes only
 default_pdf_name = 'data/bmw/SND_GFB_A1_15054410_101550881_de96a04a-4790-4b71-a3a9-4e7a1a8f16d6.pdf'
@@ -38,7 +38,7 @@ if __name__ == '__main__':
         ext.open(file_name, make_csv=False)
         ext.open_page(1)
         row = []
-        # ext.drop_page()
+        #ext.drop_page()
 
         # date
         ln = ext.grep('Buchhaltung')
@@ -64,14 +64,17 @@ if __name__ == '__main__':
         # print(items[0])
         ln += 2
         items = ext.lines[ln].split('\t')
-        row += [items[-1]]
+        if len(items) == 1:
+            items = ext.lines[ln + 1].split('\t')
+        items = items[1].split(' ')
+        row += [items[0]]
         # print(items[-1])
 
         # due date
         ext.open_page(2)
         ln = ext.grep('Due date')
         items = ext.lines[ln].split('\t')
-        row += [items[1]]
+        row += [items[-1]]
         # print(items[1])
 
         ext.common_output_write(row)
