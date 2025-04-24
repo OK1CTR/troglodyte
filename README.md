@@ -8,6 +8,7 @@ Sada skriptů pro export různých objemných dat z úředních dokumentů ve fo
 - 31.03.2025 **01.001**: The first test.
 - 01.04.2025 **01.002**: Directory lister in library, US->CZ number format conversion, code cleanup.
 - 16.04.2025 **02.001**: Added CSBI from BMW, common output file, function for using it, optimized previous code.
+- 14.04.2025 **02.002**: CSBI from BMW tested successfully.
 
 ## Documentation
 
